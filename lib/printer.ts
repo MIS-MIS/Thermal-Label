@@ -228,7 +228,7 @@ export function formatLabelContent(content: string, options: LabelOptions) {
         .align('center')
         .text(content)
         .newline()
-        .barcode(content, 'CODE128', { width: 2, height: 100 })
+        .barcode(content, 'CODE128')
         .newline();
       break;
       
