@@ -17,7 +17,9 @@ const P = () => class PipelineSingleton {
   }
 }
 
-let PipelineSingleton;
+type PipelineSingletonType = ReturnType<typeof P>;
+
+let PipelineSingleton: PipelineSingletonType;
 if (process.env.NODE_ENV !== 'production') {
   // When running in development mode, attach the pipeline to the
   // global object so that it's preserved between hot reloads.
