@@ -1,5 +1,5 @@
 import { takeScreenshot } from '../actions/screenshot';
-import { getIssueTags, SentryIssue } from '../lib/sentry';
+import { getIssueTags, type SentryIssue as SentryIssueType } from '../lib/sentry';
 import ms from 'ms';
 
 function Stats({ stats, label }: { stats: Stat[], label: string }) {
@@ -26,7 +26,7 @@ function Stats({ stats, label }: { stats: Stat[], label: string }) {
     </div>
   );
 }
-export async function SentryIssue({ issue } : { issue: SentryIssue }) {
+export async function SentryIssue({ issue } : { issue: SentryIssueType }) {
   const firstSeen = new Date(issue.firstSeen);
   const firstSeenAgo = ms(Date.now() - firstSeen.getTime());
   const lastSeen = new Date(issue.lastSeen);
