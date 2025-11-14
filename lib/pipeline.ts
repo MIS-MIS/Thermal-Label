@@ -1,9 +1,11 @@
 import { pipeline } from "@xenova/transformers";
 
+type PipelineTask = Parameters<typeof pipeline>[0];
+
 // Use the Singleton pattern to enable lazy construction of the pipeline.
 // NOTE: We wrap the class in a function to prevent code duplication (see below).
 const P = () => class PipelineSingleton {
-  static task = 'text-classification';
+  static task: PipelineTask = 'text-classification';
   static model = "Xenova/toxic-bert";
   static instance: any = null;
 
