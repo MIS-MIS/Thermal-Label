@@ -15,6 +15,8 @@ class SimpleESCPOSEncoder {
     ALIGN_LEFT: [0x1B, 0x61, 0x00],
     BOLD_ON: [0x1B, 0x45, 0x01],
     BOLD_OFF: [0x1B, 0x45, 0x00],
+    INVERT_ON: [0x1D, 0x42, 0x01],
+    INVERT_OFF: [0x1D, 0x42, 0x00],
     SIZE_NORMAL: [0x1B, 0x21, 0x00],
     SIZE_DOUBLE: [0x1B, 0x21, 0x30],
     CUT_FULL: [0x1D, 0x56, 0x00],
@@ -53,6 +55,15 @@ class SimpleESCPOSEncoder {
       this.buffer.push(...this.commands.BOLD_ON);
     } else {
       this.buffer.push(...this.commands.BOLD_OFF);
+    }
+    return this;
+  }
+
+  invert(enable = true) {
+    if (enable) {
+      this.buffer.push(...this.commands.INVERT_ON);
+    } else {
+      this.buffer.push(...this.commands.INVERT_OFF);
     }
     return this;
   }
