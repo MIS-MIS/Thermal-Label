@@ -117,62 +117,129 @@ const helloWorldData = Buffer.from([
   0x48, 0x65, 0x6C, 0x6C, 0x6F, 0x2C, 0x20, 0x57, 0x6F, 0x72, 0x6C, 0x64, 0x21, 0x0A, // "Hello, World!\n"
 ]);
 
-const PORT = 9100; // Most printers use port 9100
-const HOST = '192.168.1.87'; // The IP address of the printer, I got this by holding the feed button on the printer while turning it on
+const PORT = process.env.PRINTER_PORT || 9100;
+
+const HOST = process.env.PRINTER_IP || '192.168.1.87';
+
+
 
 // Cloud printing configuration
+
 const CLOUD_MODE = process.env.NODE_ENV === 'production' || process.env.CLOUD_PRINTING === 'true';
+
 const PRINTNODE_API_KEY = process.env.PRINTNODE_API_KEY;
+
 const CLOUD_PRINTER_ID = process.env.CLOUD_PRINTER_ID || 'default-thermal';
 
 
+
+
+
 const printerClientSingleton = () => {
+
   console.log('Creating new socket...');
+
   return new net.Socket();
+
 }
+
+
+
 
 
 // This singleton pattern is used to ensure that the client is only created once and reused across hot reloads in Next.js
+
 export const client = globalThis.printerClientGlobal ?? printerClientSingleton();
+
 globalThis.printerClientGlobal = client;
 
-if (!globalThis.printerConnected) {
-  console.log('[🧾 THERMAL] Connecting to printer for the first time');
-  client.connect(PORT, HOST, () => {
-    globalThis.printerConnected = true;
-    console.log('[🧾 THERMAL] Connected to printer');
+
+
+if (!CLOUD_MODE) {
+
+  if (!globalThis.printerConnected) {
+
+    console.log(`[🧾 THERMAL] Connecting to local printer at ${HOST}:${PORT}`);
+
+    client.connect(Number(PORT), HOST, () => {
+
+      globalThis.printerConnected = true;
+
+      console.log('[🧾 THERMAL] Connected to printer');
+
+    });
+
+  }
+
+
+
+  client.on('data', (data) => {
+
+    console.log('[🧾 THERMAL] Received:', data.toString('hex'));
+
   });
+
+
+
+
+
+  client.on('error', (err) => {
+
+    console.error('[🧾 THERMAL] Error connecting to printer:', err);
+
+    globalThis.printerConnected = false;
+
+  });
+
+
+
+
+
+  client.on('close', () => {
+
+    console.log('[🧾 THERMAL] Disconnected from printer');
+
+    globalThis.printerConnected = false;
+
+  });
+
+
+
+
+
+  const socketEvents = ['close',
+
+    'connectionAttempt',
+
+    'connectionAttemptFailed',
+
+    'connectionAttemptTimeout',
+
+    'drain',
+
+    'end',
+
+    'lookup',
+
+    'connect',
+
+    'ready',
+
+    'timeout'];
+
+
+
+  socketEvents.forEach((event) => {
+
+    client.on(event, (data) => {
+
+      console.log('[🧾 THERMAL] Event:', event);
+
+    });
+
+  });
+
 }
-
-
-client.on('data', (data) => {
-  console.log('[🧾 THERMAL] Received:', data.toString('hex'));
-});
-
-client.on('error', (err) => {
-  console.error('[🧾 THERMAL] Error connecting to printer:', err);
-});
-
-client.on('close', () => {
-  console.log('[🧾 THERMAL] Disconnected from printer');
-});
-
-const socketEvents = ['close',
-  'connectionAttempt',
-  'connectionAttemptFailed',
-  'connectionAttemptTimeout',
-  'drain',
-  'end',
-  'lookup',
-  'connect',
-  'ready',
-  'timeout'];
-
-socketEvents.forEach((event) => {
-  client.on(event, (data) => {
-    console.log('[🧾 THERMAL] Event:', event);
-  });
-});
 
 
 declare const globalThis: {

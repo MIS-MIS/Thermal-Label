@@ -1,11 +1,11 @@
 "use server";
 import { chromium } from 'playwright';
-import { client, encoder } from '../lib/printer';
+import { printData, encoder } from '../lib/printer';
 
 export async function takeScreenshot(data: FormData) {
   console.log('Taking screenshot');
   const result = encoder.initialize().text('Taking screenshot').newline().encode();
-  client.write(result);
+  await printData(result, { title: 'Screenshot' });
 }
 // export async function takeScreenshot(issueId: string) {
 //   const browser = await chromium.launch();
