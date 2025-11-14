@@ -8,7 +8,7 @@
     <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
     <script src="https://cdn.tailwindcss.com"></script>
-    <script src="https://unpkg.com/escpos-buffer@latest/dist/escpos-buffer.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/escpos-encoder/dist/escpos-encoder.min.js"></script>
     <style>
         body {
             font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
@@ -99,7 +99,7 @@
                 setContent(template.placeholder);
             }, [labelType]);
 
-            const encoder = new ESCPOSBuffer();
+            const encoder = new EscposEncoder();
 
             const handlePrint = async () => {
                 if (!content.trim()) {
@@ -337,7 +337,8 @@
         }
 
         // Render the app
-        ReactDOM.render(<LabelPrinter />, document.getElementById('root'));
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(<LabelPrinter />);
     </script>
 </body>
 </html>
