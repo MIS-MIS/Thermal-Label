@@ -8,6 +8,7 @@
     <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
     <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/escpos-buffer@latest/dist/escpos-buffer.min.js"></script>
     <style>
         body {
             font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
@@ -27,53 +28,6 @@
 
     <script type="text/babel">
         const { useState, useEffect } = React;
-
-        // Configuration - UPDATE THIS URL WHEN YOU DEPLOY TO RENDER
-        const API_BASE = 'https://thermal-label.onrender.com';
-        const COMPANY_TOKEN = 'thermal-internal-2024';
-
-        // Label Printer API Service
-        const LabelPrinterAPI = {
-            async printLabel(labelData) {
-                try {
-                    const response = await fetch(`${API_BASE}/api/print?action=label`, {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json',
-                            'x-company-token': COMPANY_TOKEN
-                        },
-                        body: JSON.stringify(labelData)
-                    });
-
-                    if (!response.ok) {
-                        throw new Error(`Server error: ${response.status}`);
-                    }
-
-                    return await response.json();
-                } catch (error) {
-                    console.error('Print failed:', error);
-                    throw error;
-                }
-            },
-
-            async testPrinter() {
-                try {
-                    const response = await fetch(`${API_BASE}/api/print?action=test`, {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json',
-                            'x-company-token': COMPANY_TOKEN
-                        },
-                        body: JSON.stringify({})
-                    });
-
-                    return await response.json();
-                } catch (error) {
-                    console.error('Test failed:', error);
-                    throw error;
-                }
-            }
-        };
 
         // Label Templates
         const LABEL_TEMPLATES = {
@@ -112,6 +66,30 @@
             const [copies, setCopies] = useState(1);
             const [isLoading, setIsLoading] = useState(false);
             const [lastResult, setLastResult] = useState(null);
+            const [serialPort, setSerialPort] = useState(null);
+            const [printerConnected, setPrinterConnected] = useState(false);
+            const [connectionStatus, setConnectionStatus] = useState('Disconnected');
+
+            const connectToPrinter = async () => {
+                if (!('serial' in navigator)) {
+                    alert('Web Serial API not supported in this browser. Please use Chrome, Edge, or Opera.');
+                    return;
+                }
+
+                setConnectionStatus('Connecting...');
+                try {
+                    const port = await navigator.serial.requestPort();
+                    await port.open({ baudRate: 9600 }); // Common baud rate for thermal printers
+                    setSerialPort(port);
+                    setPrinterConnected(true);
+                    setConnectionStatus('Connected');
+                    alert('✅ Printer connected successfully!');
+                } catch (error) {
+                    console.error('Error connecting to printer:', error);
+                    setConnectionStatus('Disconnected');
+                    alert(`❌ Failed to connect to printer: ${error.message}`);
+                }
+            };
 
             // Update dimensions when label type changes
             useEffect(() => {
@@ -121,26 +99,39 @@
                 setContent(template.placeholder);
             }, [labelType]);
 
+            const encoder = new ESCPOSBuffer();
+
             const handlePrint = async () => {
                 if (!content.trim()) {
                     alert('Please enter label content');
                     return;
                 }
+                if (!serialPort) {
+                    alert('Printer not connected. Please connect to the printer first.');
+                    return;
+                }
 
                 setIsLoading(true);
                 try {
-                    const result = await LabelPrinterAPI.printLabel({
-                        content: content.trim(),
-                        width,
-                        height,
-                        copies,
-                        labelType,
-                        title: `${LABEL_TEMPLATES[labelType].name} - ${new Date().toLocaleString()}`
-                    });
+                    const writer = serialPort.writable.getWriter();
+                    const textEncoder = new TextEncoder();
 
-                    setLastResult(result);
+                    let printData = encoder
+                        .initialize()
+                        .text(content.trim())
+                        .newline()
+                        .cut()
+                        .encode();
+
+                    for (let i = 0; i < copies; i++) {
+                        await writer.write(printData);
+                        // Add a small delay between copies if needed, though usually not necessary for ESC/POS
+                        // await new Promise(resolve => setTimeout(resolve, 100));
+                    }
+                    writer.releaseLock();
                     alert(`✅ Label printed successfully!\n${copies} copies sent to printer.`);
                 } catch (error) {
+                    console.error('Print failed:', error);
                     alert(`❌ Print failed: ${error.message}`);
                 } finally {
                     setIsLoading(false);
@@ -148,11 +139,28 @@
             };
 
             const handleTest = async () => {
+                if (!serialPort) {
+                    alert('Printer not connected. Please connect to the printer first.');
+                    return;
+                }
+
                 setIsLoading(true);
                 try {
-                    const result = await LabelPrinterAPI.testPrinter();
+                    const writer = serialPort.writable.getWriter();
+                    const textEncoder = new TextEncoder();
+
+                    let testData = encoder
+                        .initialize()
+                        .text('Printer test successful!')
+                        .newline()
+                        .cut()
+                        .encode();
+
+                    await writer.write(testData);
+                    writer.releaseLock();
                     alert('✅ Printer test successful!');
                 } catch (error) {
+                    console.error('Test failed:', error);
                     alert(`❌ Printer test failed: ${error.message}`);
                 } finally {
                     setIsLoading(false);
@@ -267,8 +275,16 @@
                                     {/* Action Buttons */}
                                     <div className="space-y-4">
                                         <button
+                                            onClick={connectToPrinter}
+                                            disabled={isLoading || printerConnected}
+                                            className="w-full bg-purple-600 text-white py-3 px-6 rounded-lg hover:bg-purple-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors font-medium"
+                                        >
+                                            {isLoading ? '⏳ Connecting...' : '🔌 Connect to Printer'}
+                                        </button>
+
+                                        <button
                                             onClick={handlePrint}
-                                            disabled={isLoading || !content.trim()}
+                                            disabled={isLoading || !content.trim() || !printerConnected}
                                             className="w-full bg-blue-600 text-white py-3 px-6 rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors font-medium"
                                         >
                                             {isLoading ? '⏳ Printing...' : '🖨️ Print Label'}
@@ -276,7 +292,7 @@
 
                                         <button
                                             onClick={handleTest}
-                                            disabled={isLoading}
+                                            disabled={isLoading || !printerConnected}
                                             className="w-full bg-green-600 text-white py-3 px-6 rounded-lg hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors font-medium"
                                         >
                                             {isLoading ? '⏳ Testing...' : '🧪 Test Printer'}
@@ -312,8 +328,7 @@
                         {/* Status */}
                         <div className="glass p-4 text-center">
                             <p className="text-white/80 text-sm">
-                                Connected to: <strong>{API_BASE}</strong> • 
-                                Status: <span className="text-green-300">Online</span>
+                                Printer Status: <span className={printerConnected ? "text-green-300" : "text-red-300"}>{connectionStatus}</span>
                             </p>
                         </div>
                     </div>
