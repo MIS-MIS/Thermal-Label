@@ -1,10 +1,6 @@
 "use server";
 import { chromium } from 'playwright';
-import { client } from '../lib/printer';
-import EscPosEncoder from "esc-pos-encoder";
-import { loadImage } from 'canvas';
-
-const encoder = new EscPosEncoder();
+import { client, encoder } from '../lib/printer';
 
 export async function takeScreenshot(data: FormData) {
   console.log('Taking screenshot');

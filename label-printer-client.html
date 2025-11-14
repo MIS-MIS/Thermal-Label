@@ -1,0 +1,328 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Company Label Printer</title>
+    <script src="https://unpkg.com/react@18/umd/react.development.js"></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+        }
+        .glass {
+            background: rgba(255, 255, 255, 0.25);
+            backdrop-filter: blur(10px);
+            border-radius: 10px;
+            border: 1px solid rgba(255, 255, 255, 0.18);
+        }
+    </style>
+</head>
+<body>
+    <div id="root"></div>
+
+    <script type="text/babel">
+        const { useState, useEffect } = React;
+
+        // Configuration - UPDATE THIS URL WHEN YOU DEPLOY TO RENDER
+        const API_BASE = 'http://localhost:3001'; // Change to: https://your-app.onrender.com
+        const COMPANY_TOKEN = 'thermal-internal-2024';
+
+        // Label Printer API Service
+        const LabelPrinterAPI = {
+            async printLabel(labelData) {
+                try {
+                    const response = await fetch(`${API_BASE}/api/print?action=label`, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'x-company-token': COMPANY_TOKEN
+                        },
+                        body: JSON.stringify(labelData)
+                    });
+
+                    if (!response.ok) {
+                        throw new Error(`Server error: ${response.status}`);
+                    }
+
+                    return await response.json();
+                } catch (error) {
+                    console.error('Print failed:', error);
+                    throw error;
+                }
+            },
+
+            async testPrinter() {
+                try {
+                    const response = await fetch(`${API_BASE}/api/print?action=test`, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'x-company-token': COMPANY_TOKEN
+                        },
+                        body: JSON.stringify({})
+                    });
+
+                    return await response.json();
+                } catch (error) {
+                    console.error('Test failed:', error);
+                    throw error;
+                }
+            }
+        };
+
+        // Label Templates
+        const LABEL_TEMPLATES = {
+            shipping: {
+                name: 'Shipping Label',
+                width: 80,
+                height: 60,
+                placeholder: 'Recipient Name\nStreet Address\nCity, State ZIP\nCountry'
+            },
+            address: {
+                name: 'Address Label', 
+                width: 58,
+                height: 30,
+                placeholder: 'John Smith\n123 Main St\nAnytown, CA 12345'
+            },
+            barcode: {
+                name: 'Barcode Label',
+                width: 60,
+                height: 40,
+                placeholder: '123456789012'
+            },
+            custom: {
+                name: 'Custom Label',
+                width: 70,
+                height: 40,
+                placeholder: 'Custom text here...'
+            }
+        };
+
+        // Main Label Printer Component
+        function LabelPrinter() {
+            const [labelType, setLabelType] = useState('shipping');
+            const [content, setContent] = useState('');
+            const [width, setWidth] = useState(80);
+            const [height, setHeight] = useState(60);
+            const [copies, setCopies] = useState(1);
+            const [isLoading, setIsLoading] = useState(false);
+            const [lastResult, setLastResult] = useState(null);
+
+            // Update dimensions when label type changes
+            useEffect(() => {
+                const template = LABEL_TEMPLATES[labelType];
+                setWidth(template.width);
+                setHeight(template.height);
+                setContent(template.placeholder);
+            }, [labelType]);
+
+            const handlePrint = async () => {
+                if (!content.trim()) {
+                    alert('Please enter label content');
+                    return;
+                }
+
+                setIsLoading(true);
+                try {
+                    const result = await LabelPrinterAPI.printLabel({
+                        content: content.trim(),
+                        width,
+                        height,
+                        copies,
+                        labelType,
+                        title: `${LABEL_TEMPLATES[labelType].name} - ${new Date().toLocaleString()}`
+                    });
+
+                    setLastResult(result);
+                    alert(`✅ Label printed successfully!\n${copies} copies sent to printer.`);
+                } catch (error) {
+                    alert(`❌ Print failed: ${error.message}`);
+                } finally {
+                    setIsLoading(false);
+                }
+            };
+
+            const handleTest = async () => {
+                setIsLoading(true);
+                try {
+                    const result = await LabelPrinterAPI.testPrinter();
+                    alert('✅ Printer test successful!');
+                } catch (error) {
+                    alert(`❌ Printer test failed: ${error.message}`);
+                } finally {
+                    setIsLoading(false);
+                }
+            };
+
+            return (
+                <div className="min-h-screen p-6">
+                    <div className="max-w-4xl mx-auto">
+                        {/* Header */}
+                        <div className="text-center mb-8">
+                            <h1 className="text-4xl font-bold text-white mb-2">
+                                🏷️ Company Label Printer
+                            </h1>
+                            <p className="text-white/80">
+                                Professional thermal label printing system
+                            </p>
+                        </div>
+
+                        {/* Main Interface */}
+                        <div className="glass p-8 mb-6">
+                            <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                                
+                                {/* Left Side - Configuration */}
+                                <div className="space-y-6">
+                                    <h2 className="text-2xl font-bold text-gray-800">Label Configuration</h2>
+                                    
+                                    {/* Label Type */}
+                                    <div>
+                                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                                            Label Type
+                                        </label>
+                                        <select
+                                            value={labelType}
+                                            onChange={(e) => setLabelType(e.target.value)}
+                                            className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                                        >
+                                            {Object.entries(LABEL_TEMPLATES).map(([key, template]) => (
+                                                <option key={key} value={key}>
+                                                    {template.name}
+                                                </option>
+                                            ))}
+                                        </select>
+                                    </div>
+
+                                    {/* Dimensions */}
+                                    <div className="grid grid-cols-2 gap-4">
+                                        <div>
+                                            <label className="block text-sm font-medium text-gray-700 mb-2">
+                                                Width (mm)
+                                            </label>
+                                            <input
+                                                type="number"
+                                                value={width}
+                                                onChange={(e) => setWidth(parseInt(e.target.value))}
+                                                min="20"
+                                                max="120"
+                                                className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                                            />
+                                        </div>
+                                        <div>
+                                            <label className="block text-sm font-medium text-gray-700 mb-2">
+                                                Height (mm)
+                                            </label>
+                                            <input
+                                                type="number"
+                                                value={height}
+                                                onChange={(e) => setHeight(parseInt(e.target.value))}
+                                                min="20"
+                                                max="100"
+                                                className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                                            />
+                                        </div>
+                                    </div>
+
+                                    {/* Copies */}
+                                    <div>
+                                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                                            Number of Copies
+                                        </label>
+                                        <input
+                                            type="number"
+                                            value={copies}
+                                            onChange={(e) => setCopies(parseInt(e.target.value))}
+                                            min="1"
+                                            max="100"
+                                            className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                                        />
+                                    </div>
+                                </div>
+
+                                {/* Right Side - Content */}
+                                <div className="space-y-6">
+                                    <h2 className="text-2xl font-bold text-gray-800">Label Content</h2>
+                                    
+                                    <div>
+                                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                                            Content (Use line breaks for multiple lines)
+                                        </label>
+                                        <textarea
+                                            value={content}
+                                            onChange={(e) => setContent(e.target.value)}
+                                            placeholder={LABEL_TEMPLATES[labelType].placeholder}
+                                            className="w-full h-40 p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none"
+                                            maxLength="500"
+                                        />
+                                        <p className="text-xs text-gray-500 mt-1">
+                                            {content.length}/500 characters
+                                        </p>
+                                    </div>
+
+                                    {/* Action Buttons */}
+                                    <div className="space-y-4">
+                                        <button
+                                            onClick={handlePrint}
+                                            disabled={isLoading || !content.trim()}
+                                            className="w-full bg-blue-600 text-white py-3 px-6 rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors font-medium"
+                                        >
+                                            {isLoading ? '⏳ Printing...' : '🖨️ Print Label'}
+                                        </button>
+
+                                        <button
+                                            onClick={handleTest}
+                                            disabled={isLoading}
+                                            className="w-full bg-green-600 text-white py-3 px-6 rounded-lg hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors font-medium"
+                                        >
+                                            {isLoading ? '⏳ Testing...' : '🧪 Test Printer'}
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* Preview */}
+                        <div className="glass p-6 mb-6">
+                            <h3 className="text-xl font-bold text-gray-800 mb-4">Label Preview</h3>
+                            <div className="bg-white p-4 rounded border-2 border-dashed border-gray-300 text-center">
+                                <div className="text-sm text-gray-500 mb-2">
+                                    {width}mm × {height}mm • {copies} {copies === 1 ? 'copy' : 'copies'}
+                                </div>
+                                <div 
+                                    className="border border-gray-400 mx-auto bg-gray-50 p-3 text-sm"
+                                    style={{
+                                        width: `${Math.min(width * 3, 300)}px`,
+                                        height: `${Math.min(height * 2, 150)}px`,
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        justifyContent: 'center',
+                                        whiteSpace: 'pre-line'
+                                    }}
+                                >
+                                    {content || 'Label content will appear here...'}
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* Status */}
+                        <div className="glass p-4 text-center">
+                            <p className="text-white/80 text-sm">
+                                Connected to: <strong>{API_BASE}</strong> • 
+                                Status: <span className="text-green-300">Online</span>
+                            </p>
+                        </div>
+                    </div>
+                </div>
+            );
+        }
+
+        // Render the app
+        ReactDOM.render(<LabelPrinter />, document.getElementById('root'));
+    </script>
+</body>
+</html>

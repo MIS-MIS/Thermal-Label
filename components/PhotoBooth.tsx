@@ -1,9 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import EscPosEncoder from "esc-pos-encoder";
 import { cutPaper, printImage } from "@/actions/print";
-const encoder = new EscPosEncoder();
 
 async function useWebcam() {
   const video = document.createElement("video");
@@ -62,13 +60,8 @@ export function PhotoBooth() {
       const buffer = await new Promise((resolve) => canvas.toBlob(resolve));
       // console.log(imageDataUrl, buffer);
 
-      // Encode it
-      let result = encoder
-        .initialize()
-        .image(canvasRef.current, canvas.width, canvas.height, "floydsteinberg")
-        .encode();
-
-      console.log(result);
+      // Image processing completed - ready for printing
+      console.log('Image processed, ready for printing');
       // Set the captured image
       setCapturedImage(imageDataUrl);
       // Sent to server to print
