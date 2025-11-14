@@ -1,5 +1,5 @@
-import { takeScreenshot } from '@/actions/screenshot';
-import { getIssueTags, SentryIssue } from '@/lib/sentry';
+import { takeScreenshot } from '../actions/screenshot';
+import { getIssueTags, SentryIssue } from '../lib/sentry';
 import ms from 'ms';
 
 function Stats({ stats, label }: { stats: Stat[], label: string }) {

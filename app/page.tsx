@@ -1,7 +1,7 @@
-import Chat from "@/components/Chat";
-import { ChatForm } from "@/components/ChatForm";
-import { PhotoBooth } from "@/components/PhotoBooth";
-import TestPrinter from "@/components/Test";
+import Chat from "../components/Chat";
+import { ChatForm } from "../components/ChatForm";
+import { PhotoBooth } from "../components/PhotoBooth";
+import TestPrinter from "../components/Test";
 import Image from "next/image";
 
 export default function Home() {

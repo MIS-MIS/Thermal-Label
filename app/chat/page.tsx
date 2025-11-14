@@ -1,5 +1,5 @@
-import Chat from "@/components/Chat";
-import { PhotoBooth } from "@/components/PhotoBooth";
+import Chat from "../../components/Chat";
+import { PhotoBooth } from "../../components/PhotoBooth";
 
 export default function Page() {
   return (

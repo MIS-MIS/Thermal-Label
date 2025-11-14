@@ -1,6 +1,6 @@
 "use client";
 
-import { printMessage } from "@/lib/chat";
+import { printMessage } from "../lib/chat";
 import { useActionState } from "react";
 
 export function ChatForm() {

@@ -1,7 +1,7 @@
 import { headers } from "next/headers";
 import * as sentryTypes from '@sentry/types';
-import { SentryIssue } from "@/components/SentryIssue";
-import { getIssues } from "@/lib/sentry";
+import { SentryIssue } from "../../components/SentryIssue";
+import { getIssues } from "../../lib/sentry";
 import Link from "next/link";
 
 export default async function Sentry() {

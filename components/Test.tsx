@@ -1,6 +1,6 @@
 "use client";
 
-import { testPrinter } from "@/actions/print";
+import { testPrinter } from "../actions/print";
 
 export default function TestPrinter() {
   return (
