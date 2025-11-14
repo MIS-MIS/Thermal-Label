@@ -51,7 +51,7 @@ export async function SentryIssue({ issue } : { issue: SentryIssueType }) {
       </form>
       <div className="border-4 border-black">
         <h1 className="p-2 bg-black text-white">
-          ⚠️ {issue.metadata.type || issue.metadata.title}
+          ⚠️ {issue.metadata.type || (issue.metadata as any).title || 'Error'}
         </h1>
         <p className="p-2">{issue.metadata.value}</p>
       </div>
