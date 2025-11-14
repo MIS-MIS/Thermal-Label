@@ -61,7 +61,7 @@ export async function SentryIssue({ issue } : { issue: SentryIssueType }) {
         <p>⏲ First Seen {firstSeenAgo}</p>
       </div>
       <Stats stats={issue.stats["24h"]} label="24h" />
-      <Stats stats={issue.stats["30d"]} label="30d" />
+      <Stats stats={issue.stats["14d"]} label="14d" />
       <div className="flex gap-2 flex-wrap">
         <Pill>
           <strong>Category</strong>
