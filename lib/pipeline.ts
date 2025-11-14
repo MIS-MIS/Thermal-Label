@@ -9,7 +9,7 @@ const P = () => class PipelineSingleton {
   static model = "Xenova/toxic-bert";
   static instance: any = null;
 
-  static async getInstance(progress_callback = null) {
+  static async getInstance(progress_callback = undefined) {
     if (this.instance === null) {
       this.instance = pipeline(this.task, this.model, { progress_callback });
     }
