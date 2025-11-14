@@ -2,6 +2,8 @@ import { takeScreenshot } from '../actions/screenshot';
 import { getIssueTags, type SentryIssue as SentryIssueType } from '../lib/sentry';
 import ms from 'ms';
 
+type Stat = [number, number]; // [timestamp, count]
+
 function Stats({ stats, label }: { stats: Stat[], label: string }) {
   const statsArray = stats;
   const maxInPeriod = Math.max(...statsArray.map(([_, count]) => count));
@@ -123,12 +125,12 @@ async function IssueTags({ tagKey, issueId }: { tagKey: string, issueId: string 
   );
 }
 
-function Pill({ children }) {
+function Pill({ children }: { children: React.ReactNode }) {
   return (
     <div className="rounded-full bg-black text-white text-sm px-1">{children}</div>
   );
 }
-function PillContents({ children }) {
+function PillContents({ children }: { children: React.ReactNode }) {
   return (
     <span className="bg-white text-black px-1 ml-1 rounded-full">
       {children}
