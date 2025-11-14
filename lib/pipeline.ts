@@ -5,7 +5,7 @@ import { pipeline } from "@xenova/transformers";
 const P = () => class PipelineSingleton {
   static task = 'text-classification';
   static model = "Xenova/toxic-bert";
-  static instance = null;
+  static instance: any = null;
 
   static async getInstance(progress_callback = null) {
     if (this.instance === null) {
