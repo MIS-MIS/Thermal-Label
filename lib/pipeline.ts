@@ -22,10 +22,10 @@ if (process.env.NODE_ENV !== 'production') {
   // When running in development mode, attach the pipeline to the
   // global object so that it's preserved between hot reloads.
   // For more information, see https://vercel.com/guides/nextjs-prisma-postgres
-  if (!global.PipelineSingleton) {
-    global.PipelineSingleton = P();
+  if (!(global as any).PipelineSingleton) {
+    (global as any).PipelineSingleton = P();
   }
-  PipelineSingleton = global.PipelineSingleton;
+  PipelineSingleton = (global as any).PipelineSingleton;
 } else {
   PipelineSingleton = P();
 }
