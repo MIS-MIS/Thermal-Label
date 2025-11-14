@@ -1,5 +1,5 @@
 "use server";
-import { client, printData, encoder, printLabel, LabelOptions } from '@/lib/printer';
+import { client, printData, encoder, printLabel, LabelOptions } from '../lib/printer';
 
 // Label printing action
 export async function printLabelAction(

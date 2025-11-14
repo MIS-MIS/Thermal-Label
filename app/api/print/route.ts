@@ -1,5 +1,5 @@
-import { testPrinter, printImage, cutPaper, printLabelAction } from '@/actions/print';
-import { encoder, printData, LabelOptions } from '@/lib/printer';
+import { testPrinter, printImage, cutPaper, printLabelAction } from '../../../actions/print';
+import { encoder, printData, LabelOptions } from '../../../lib/printer';
 
 export async function POST(request: Request) {
   const url = new URL(request.url);

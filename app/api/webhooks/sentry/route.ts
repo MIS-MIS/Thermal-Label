@@ -1,6 +1,6 @@
-import { takeScreenshot } from '@/actions/screenshot';
-import { testPrinter, printImage, cutPaper } from '@/actions/print';
-import { encoder, printData } from '@/lib/printer';
+import { takeScreenshot } from '../../../../actions/screenshot';
+import { testPrinter, printImage, cutPaper } from '../../../../actions/print';
+import { encoder, printData } from '../../../../lib/printer';
 import { writeFile } from 'fs/promises';
 
 // Sentry webhook handler

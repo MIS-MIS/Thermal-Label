@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { cutPaper, printImage } from "@/actions/print";
+import { cutPaper, printImage } from "../actions/print";
 
 async function useWebcam() {
   const video = document.createElement("video");
