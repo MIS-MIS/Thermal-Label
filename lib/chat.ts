@@ -8,7 +8,7 @@ let count = 0;
 
 const rateLimit = new Map();
 
-export async function printMessage(prevState, data: FormData) {
+export async function printMessage(prevState: any, data: FormData) {
   const ip = headers().get("x-forwarded-for") || headers().get("x-real-ip");
   const lastRequest = rateLimit.get(ip);
   if (lastRequest && Date.now() - lastRequest < 5000) {

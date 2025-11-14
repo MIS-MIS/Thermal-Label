@@ -3,8 +3,13 @@
 import { printMessage } from "../lib/chat";
 import { useActionState } from "react";
 
+type ChatState = {
+  body?: string;
+  name?: string;
+};
+
 export function ChatForm() {
-  const [state, formAction] = useActionState(printMessage, {});
+  const [state, formAction] = useActionState<ChatState, FormData>(printMessage, {});
   return (
     <form action={formAction}>
       <input
