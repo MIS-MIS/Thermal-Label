@@ -99,7 +99,7 @@
                 setContent(template.placeholder);
             }, [labelType]);
 
-            const encoder = new EscposEncoder();
+            const encoder = new window.EscposEncoder();
 
             const handlePrint = async () => {
                 if (!content.trim()) {
