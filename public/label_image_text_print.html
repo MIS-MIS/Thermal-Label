@@ -1,0 +1,264 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <title>Thermal Label: Image + Name + Code</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <style>
+    :root { --pad: 16px; }
+    body { font-family: system-ui, Arial, sans-serif; padding: var(--pad); line-height: 1.4; }
+    h2 { margin: 0 0 12px; }
+    label { display:block; margin-top: 12px; font-weight: 600; }
+    input[type="text"], input[type="number"] { padding: 8px; width: 320px; max-width: 100%; }
+    input[type="file"] { padding: 6px 0; }
+    button { margin-top: 12px; padding: 10px 14px; cursor: pointer; }
+    .row { display:flex; gap:12px; align-items:center; flex-wrap:wrap; margin-top: 8px; }
+    .preview { border:1px solid #ccc; padding:8px; margin-top:12px; max-width: 100%; overflow:auto; }
+    .hint { font-size: 12px; color: #666; margin-top: 6px; }
+    #status { margin-left: 8px; font-weight: 700; }
+    .danger { color: #b00020; }
+    .ok { color: #0b6b2d; }
+    .card { border: 1px solid #e1e1e1; border-radius: 8px; padding: 12px; margin-top: 12px; }
+  </style>
+</head>
+<body>
+  <h2>Thermal Label Printer (Image + Name + Code)</h2>
+
+  <div class="row">
+    <button id="connectBtn">🔌 Connect Printer (Web Serial)</button>
+    <button id="disconnectBtn">🔌 Disconnect</button>
+    <span id="status">Not connected</span>
+  </div>
+
+  <div class="card">
+    <label>Image (PNG/JPG):
+      <input type="file" id="imageInput" accept="image/*" />
+    </label>
+
+    <label>Name:
+      <input type="text" id="nameInput" placeholder="Full name" />
+    </label>
+
+    <label>Code:
+      <input type="text" id="codeInput" placeholder="e.g., 123456" />
+    </label>
+
+    <div class="row">
+      <label>Printer width (dots):
+        <input type="number" id="widthDots" value="384" />
+      </label>
+      <label>Baud rate:
+        <input type="number" id="baudRate" value="9600" />
+      </label>
+      <label>Threshold (0–255):
+        <input type="number" id="threshold" value="140" />
+      </label>
+    </div>
+
+    <div class="row">
+      <label><input type="checkbox" id="printBarcode" checked /> Print CODE128 barcode under code</label>
+    </div>
+
+    <button id="printBtn">🖨️ Print Label</button>
+
+    <div class="preview">
+      <canvas id="preview" width="384" height="200"></canvas>
+      <div class="hint">Preview is scaled to the printer width. Adjust width/threshold for best results.</div>
+    </div>
+  </div>
+
+  <div class="card">
+    <strong>Tips</strong>
+    <ul class="hint">
+      <li>Use Chrome on desktop (Web Serial is not supported by Safari/Firefox).</li>
+      <li>Printer width (dots): 58mm ≈ 384, 80mm ≈ 576 (multiple of 8).</li>
+      <li>If images look too dark/light, change Threshold (e.g., 120–180).</li>
+      <li>Connect via USB. For network-only printers, browsers can’t open raw TCP sockets.</li>
+    </ul>
+  </div>
+
+  <script>
+    // ---------- Web Serial ----------
+    const Serial = {
+      port: null, writer: null,
+      async connect(baudRate) {
+        if (!('serial' in navigator)) {
+          alert('Web Serial not supported. Use Chrome on desktop.');
+          return;
+        }
+        try {
+          this.port = await navigator.serial.requestPort();
+          await this.port.open({ baudRate: baudRate || 9600 });
+          this.writer = this.port.writable.getWriter();
+          setStatus(true, 'Connected');
+        } catch (e) {
+          console.error(e);
+          alert('Failed to connect to printer.');
+        }
+      },
+      async disconnect() {
+        try {
+          if (this.writer) this.writer.releaseLock();
+          if (this.port) await this.port.close();
+        } catch {}
+        this.port = null; this.writer = null;
+        setStatus(false, 'Not connected');
+      },
+      async write(u8) {
+        if (!this.writer) throw new Error('Not connected.');
+        await this.writer.write(u8);
+      }
+    };
+
+    function setStatus(connected, text) {
+      const el = document.getElementById('status');
+      el.textContent = text;
+      el.className = connected ? 'ok' : 'danger';
+    }
+
+    // ---------- ESC/POS helpers ----------
+    const ESC = 0x1B, GS = 0x1D;
+    const LF = 0x0A;
+
+    function cmd(...bytes) { return Uint8Array.from(bytes); }
+    function textBytes(str) { return new TextEncoder().encode(str); }
+    function concat(...arrays) {
+      const total = arrays.reduce((n, a) => n + a.length, 0);
+      const out = new Uint8Array(total);
+      let o = 0;
+      for (const a of arrays) { out.set(a, o); o += a.length; }
+      return out;
+    }
+
+    function initialize() { return cmd(ESC, 0x40); }
+    function alignCenter() { return cmd(ESC, 0x61, 0x01); }
+    function alignLeft() { return cmd(ESC, 0x61, 0x00); }
+    function boldOn() { return cmd(ESC, 0x45, 0x01); }
+    function boldOff() { return cmd(ESC, 0x45, 0x00); }
+    function feed(lines=3) { return cmd(ESC, 0x64, lines); }
+    function cut() { return cmd(GS, 0x56, 0x00); }
+
+    // Basic CODE128 (auto subset). Many printers accept this.
+    function barcodeCODE128(data) {
+      // GS k 73 n d1..dn
+      const header = cmd(GS, 0x6B, 0x49, data.length);
+      return concat(header, textBytes(data));
+    }
+
+    // Raster bit image (GS v 0)
+    function rasterImage(bytes, width, height) {
+      const xBytes = Math.floor(width / 8);
+      const xL = xBytes & 0xFF, xH = (xBytes >> 8) & 0xFF;
+      const yL = height & 0xFF, yH = (height >> 8) & 0xFF;
+      // GS v 0 m xL xH yL yH [data]
+      return concat(cmd(GS, 0x76, 0x30, 0x00, xL, xH, yL, yH), bytes);
+    }
+
+    // Convert canvas → 1-bit packed bytes (MSB first, threshold)
+    function canvasToRasterBytes(canvas, threshold=140) {
+      const w = canvas.width, h = canvas.height;
+      const ctx = canvas.getContext('2d');
+      const img = ctx.getImageData(0, 0, w, h);
+      const out = new Uint8Array((w * h) / 8);
+      let byte = 0, bit = 7, idx = 0;
+
+      for (let y = 0; y < h; y++) {
+        for (let x = 0; x < w; x++) {
+          const i = (y * w + x) * 4;
+          const r = img.data[i], g = img.data[i+1], b = img.data[i+2];
+          const gray = 0.299*r + 0.587*g + 0.114*b;
+          const black = gray < threshold ? 1 : 0;
+          if (black) byte |= (1 << bit);
+          bit--;
+          if (bit < 0) { out[idx++] = byte; byte = 0; bit = 7; }
+        }
+      }
+      return out;
+    }
+
+    // ---------- UI / Image preview ----------
+    const imageInput = document.getElementById('imageInput');
+    const preview = document.getElementById('preview');
+    const ctxPrev = preview.getContext('2d');
+
+    imageInput.addEventListener('change', async (e) => {
+      const file = e.target.files?.[0];
+      if (!file) return;
+      const url = URL.createObjectURL(file);
+      const img = new Image();
+      img.onload = () => {
+        const widthDots = Math.max(8, parseInt(document.getElementById('widthDots').value) || 384);
+        const scale = widthDots / img.width;
+        const h = Math.max(8, Math.floor(img.height * scale));
+        preview.width = widthDots;
+        preview.height = h;
+        ctxPrev.fillStyle = '#fff'; ctxPrev.fillRect(0, 0, preview.width, preview.height);
+        ctxPrev.drawImage(img, 0, 0, preview.width, preview.height);
+        URL.revokeObjectURL(url);
+      };
+      img.src = url;
+    });
+
+    // ---------- Button wiring ----------
+    document.getElementById('connectBtn').onclick = async () => {
+      const baud = parseInt(document.getElementById('baudRate').value) || 9600;
+      await Serial.connect(baud);
+    };
+    document.getElementById('disconnectBtn').onclick = async () => Serial.disconnect();
+
+    document.getElementById('printBtn').onclick = async () => {
+      try {
+        if (!Serial.writer) { alert('Connect the printer first.'); return; }
+        const name = (document.getElementById('nameInput').value || '').trim();
+        const code = (document.getElementById('codeInput').value || '').trim();
+        if (!preview.width || !preview.height) { alert('Please select an image first.'); return; }
+
+        const threshold = Math.min(255, Math.max(0, parseInt(document.getElementById('threshold').value) || 140));
+
+        // Build job
+        const parts = [];
+        parts.push(initialize(), alignCenter());
+
+        // Image (raster)
+        const imgBytes = canvasToRasterBytes(preview, threshold);
+        parts.push(rasterImage(imgBytes, preview.width, preview.height), feed(1));
+
+        // Name (bold)
+        if (name) {
+          parts.push(boldOn(), textBytes(name), cmd(LF), boldOff());
+        }
+
+        // Code (as text)
+        if (code) {
+          parts.push(textBytes(code), cmd(LF));
+        }
+
+        // Optional barcode below code
+        if (code && document.getElementById('printBarcode').checked) {
+          parts.push(cmd(GS, 0x68, 80)); // barcode height
+          parts.push(cmd(GS, 0x77, 2));  // module width
+          parts.push(cmd(GS, 0x48, 2));  // HRI text below
+          parts.push(barcodeCODE128(code), cmd(LF));
+        }
+
+        parts.push(feed(3), cut());
+        const job = parts.reduce((acc, a) => concat(acc, a), new Uint8Array());
+
+        await Serial.write(job);
+        alert('Printed!');
+      } catch (e) {
+        console.error(e);
+        alert('Print failed. See console.');
+      }
+    };
+  </script>
+</body>
+</html>
+'@
+Set-Content -Path $path -Value $code -Encoding UTF8
+
+Write-Host "File written to $path"
+
+This will create/overwrite the file with the full working HTML. Open it in Chrome and print.
+
+Should I also add a version with QR codes or better image dithering? Or do you want me to commit this file into your GitHub repo under public/label_image_text_print.html so it’s available at https://your-app.onrender.com/label_image_text_print.html?
